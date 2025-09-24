@@ -6,12 +6,11 @@ data_dict = {
     'ETTh2': Dataset_ETT_hour,
     'ETTm1': Dataset_ETT_minute,
     'ETTm2': Dataset_ETT_minute,
-    'custom': Dataset_Custom,
 }
 
 
 def data_provider(args, flag):
-    Data = data_dict[args.data]
+    Data = data_dict.get(args.data, Dataset_Custom)
     timeenc = 0 if args.embed != 'timeF' else 1
 
     if flag == 'test':
