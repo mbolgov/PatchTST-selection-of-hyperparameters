@@ -6,7 +6,7 @@ import time
 plt.switch_backend('agg')
 
 
-def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
+def adjust_learning_rate(optimizer, scheduler, epoch, args, early_stopping, printout=True):
     # lr = args.learning_rate * (0.2 ** (epoch // 2))
     if args.lradj == 'type1':
         lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
@@ -29,6 +29,14 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
         lr_adjust = {epoch: args.learning_rate if epoch < 5 else args.learning_rate*0.1}  
     elif args.lradj == 'TST':
         lr_adjust = {epoch: scheduler.get_last_lr()[0]}
+    elif args.lradj == 'warmup_decay':
+        if epoch <= early_stopping.warmup_epochs:
+            lr = args.learning_rate * (2 * epoch - 1) / (2 * early_stopping.warmup_epochs)
+        elif not early_stopping.decay_mode:
+            lr = args.learning_rate
+        else:
+            lr = args.learning_rate * (1 - (2 * (epoch - early_stopping.decay_start_epoch) - 1) / (2 * early_stopping.decay_epochs))
+        lr_adjust = {epoch: lr}
     
     if epoch in lr_adjust.keys():
         lr = lr_adjust[epoch]
@@ -38,29 +46,52 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
 
 
 class EarlyStopping:
-    def __init__(self, patience=7, verbose=False, delta=0):
+    def __init__(self, patience=7, verbose=False, delta=0, warmup_epochs=0, decay_epochs=0):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
         self.best_score = None
-        self.early_stop = False
         self.val_loss_min = np.inf
         self.delta = delta
 
-    def __call__(self, val_loss, model, path):
+        self.warmup_epochs = warmup_epochs
+        self.decay_mode = False
+        self.decay_epochs = decay_epochs
+        self.decay_start_epoch = None
+
+    def __call__(self, val_loss, model, path, epoch, decay_start=False):
+        if epoch <= self.warmup_epochs:
+            return
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
             self.save_checkpoint(val_loss, model, path)
         elif score < self.best_score + self.delta:
             self.counter += 1
+            if self.decay_mode:
+                print(f'Decay iterations: {self.counter} out of {self.decay_epochs}')
+                return
+
             print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
-            if self.counter >= self.patience:
-                self.early_stop = True
+            if (self.counter >= self.patience or decay_start) and not self.decay_mode:
+                self.decay_mode = True
+                self.decay_start_epoch = epoch
+                print(f"\nSwitching to decay mode at epoch {epoch}")
+                self.counter = 0
         else:
             self.best_score = score
             self.save_checkpoint(val_loss, model, path)
+
+            if self.decay_mode:
+                self.counter += 1
+                print(f'Decay iterations: {self.counter} out of {self.decay_epochs}')
+                return
+
             self.counter = 0
+            if decay_start and not self.decay_mode:
+                self.decay_mode = True
+                self.decay_start_epoch = epoch
+                print(f"\nSwitching to decay mode at epoch {epoch}")
 
     def save_checkpoint(self, val_loss, model, path):
         if self.verbose:

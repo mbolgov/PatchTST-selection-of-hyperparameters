@@ -109,7 +109,9 @@ class Exp_Main(Exp_Basic):
         time_now = time.time()
 
         train_steps = len(train_loader)
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+        warmup_epochs = int(self.args.train_epochs * 0.2) * (self.args.lradj == 'warmup_decay')
+        decay_epochs = int(self.args.train_epochs * 0.3) * (self.args.lradj == 'warmup_decay')
+        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True, warmup_epochs=warmup_epochs, decay_epochs=decay_epochs)
 
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
@@ -124,6 +126,9 @@ class Exp_Main(Exp_Basic):
                                             max_lr = self.args.learning_rate)
 
         for epoch in range(self.args.train_epochs):
+            if self.args.lradj != 'TST':
+                adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, early_stopping)
+
             iter_count = 0
             train_loss = []
 
@@ -191,7 +196,7 @@ class Exp_Main(Exp_Basic):
                     model_optim.step()
                     
                 if self.args.lradj == 'TST':
-                    adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)
+                    adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, early_stopping, printout=False)
                     scheduler.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
@@ -201,14 +206,16 @@ class Exp_Main(Exp_Basic):
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
-            early_stopping(vali_loss, self.model, path)
-            if early_stopping.early_stop:
-                print("Early stopping")
-                break
+            early_stopping(vali_loss, self.model, path, epoch + 1, decay_start=(epoch + 1 + decay_epochs >= self.args.train_epochs))
+            if early_stopping.decay_mode:
+                if epoch + 1 - early_stopping.decay_start_epoch >= decay_epochs:
+                    print("Decay finished, stopping training")
+                    break
+                if early_stopping.decay_start_epoch == epoch + 1:
+                    best_model_path = path + '/' + 'checkpoint.pth'
+                    self.model.load_state_dict(torch.load(best_model_path))
 
-            if self.args.lradj != 'TST':
-                adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args)
-            else:
+            if self.args.lradj == 'TST':
                 print('Updating learning rate to {}'.format(scheduler.get_last_lr()[0]))
 
         best_model_path = path + '/' + 'checkpoint.pth'
