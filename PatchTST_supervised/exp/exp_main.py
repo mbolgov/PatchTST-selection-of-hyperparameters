@@ -275,7 +275,7 @@ class Exp_Main(Exp_Basic):
                 preds.append(pred)
                 trues.append(true)
                 inputx.append(batch_x.detach().cpu().numpy())
-                if i % 20 == 0:
+                if i % 10 == 0:
                     input = batch_x.detach().cpu().numpy()
                     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
                     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
@@ -291,6 +291,14 @@ class Exp_Main(Exp_Basic):
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
         inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
+
+        folder_path += 'final/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        for ch in range(min(30, preds.shape[-1])):
+            gt = np.concatenate((inputx[0, :, ch], trues[0, :, ch]), axis=0)
+            pd = np.concatenate((inputx[0, :, ch], preds[0, :, ch]), axis=0)
+            visual(gt, pd, os.path.join(folder_path, f'channel-{ch}.pdf'))
 
         # result save
         folder_path = f'./results/{self.args.data}/{self.args.pred_len}/{setting}/'
