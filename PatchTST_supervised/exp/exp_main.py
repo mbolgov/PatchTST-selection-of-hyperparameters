@@ -373,3 +373,18 @@ class Exp_Main(Exp_Basic):
         np.save(folder_path + 'real_prediction.npy', preds)
 
         return
+
+
+    def get_embeds(self):
+        train_data, train_loader = self._get_data(flag='train')
+        self.model.eval()
+        all_embeddings = []
+
+        with torch.no_grad():
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in tqdm(train_loader, desc="Get Embeddings", ncols=100):
+                batch_x = batch_x.float().to(self.device)
+                outputs, embeddings = self.model(batch_x, return_embeddings=True)
+                all_embeddings.append(embeddings.detach().cpu())
+                break
+
+        return torch.cat(all_embeddings, dim=0)
