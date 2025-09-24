@@ -60,7 +60,7 @@ class EarlyStopping:
         self.decay_start_epoch = None
 
     def __call__(self, val_loss, model, path, epoch, decay_start=False):
-        if epoch <= self.warmup_epochs:
+        if epoch < self.warmup_epochs:
             return
         score = -val_loss
         if self.best_score is None:
