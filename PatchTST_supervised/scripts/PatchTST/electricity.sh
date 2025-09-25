@@ -6,22 +6,31 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 seq_len=336
+patch_len=16
+stride=8
 model_name=PatchTST
 
 root_path_name=./dataset/
 data_path_name=electricity.csv
-model_id_name=Electricity
-data_name=custom
+data_name=Electricity
+
+if [ ! -d "./logs/LongForecasting/$data_name" ]; then
+    mkdir ./logs/LongForecasting/$data_name
+fi
 
 random_seed=2021
 for pred_len in 96 192 336 720
 do
+    if [ ! -d "./logs/LongForecasting/$data_name/$pred_len" ]; then
+        mkdir ./logs/LongForecasting/$data_name/$pred_len
+    fi
+
     python -u run_longExp.py \
       --random_seed $random_seed \
       --is_training 1 \
       --root_path $root_path_name \
       --data_path $data_path_name \
-      --model_id $model_id_name_$seq_len'_'$pred_len \
+      --model_id $pred_len'_'$seq_len'_'$patch_len'_'$stride \
       --model $model_name \
       --data $data_name \
       --features M \
@@ -35,12 +44,12 @@ do
       --dropout 0.2\
       --fc_dropout 0.2\
       --head_dropout 0\
-      --patch_len 16\
-      --stride 8\
+      --patch_len $patch_len\
+      --stride $stride\
       --des 'Exp' \
       --train_epochs 100\
       --patience 10\
       --lradj 'TST'\
       --pct_start 0.2\
-      --itr 1 --batch_size 32 --learning_rate 0.0001 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
+      --itr 1 --batch_size 32 --learning_rate 0.0001 >logs/LongForecasting/$data_name/$pred_len/$model_name'_'$seq_len'_'$patch_len'_'$stride.log
 done
