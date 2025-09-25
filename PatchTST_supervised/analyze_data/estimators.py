@@ -91,13 +91,14 @@ class DelayEstimator:
 
 
 class EmbeddingDimensionEstimator:
-    def __init__(self, tau, m_max=100, data_name="", Rtol=10.0, Atol=2.0, threshold=0.01, n_jobs=-1):
+    def __init__(self, tau, m_max=100, data_name="", Rtol=10.0, Atol=2.0, threshold=0.01, multivariate=False, n_jobs=-1):
         self.tau = tau
         self.m_max = m_max
         self.data_name = data_name
         self.Rtol = Rtol
         self.Atol = Atol
         self.threshold = threshold
+        self.multivariate = multivariate
         self.n_jobs = n_jobs
         self.all_fnns = None
         self.fnn_max = None
@@ -173,7 +174,9 @@ class EmbeddingDimensionEstimator:
         Вычисляет FNN для каждого канала и находит оптимальную размерность
         """
         T, d = X.shape
-        if d < self.m_max:
+        if self.multivariate:
+            self.all_fnns = [self._fnn_ratio_parralel(X)]
+        elif d < self.m_max:
             self.all_fnns = [self._fnn_ratio_parralel(X[:, [j]]) for j in range(d)]
         else:
             self.all_fnns = Parallel(n_jobs=self.n_jobs)(
