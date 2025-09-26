@@ -91,7 +91,7 @@ class DelayEstimator:
 
 
 class EmbeddingDimensionEstimator:
-    def __init__(self, tau, m_max=100, data_name="", Rtol=10.0, Atol=2.0, threshold=0.01, multivariate=False, n_jobs=-1):
+    def __init__(self, tau, m_max=100, data_name="", Rtol=10.0, Atol=2.0, threshold=0.01, multivariate=True, n_jobs=-1):
         self.tau = tau
         self.m_max = m_max
         self.data_name = data_name
@@ -131,7 +131,7 @@ class EmbeddingDimensionEstimator:
 
         dist_m1 = np.linalg.norm(Y_m1 - Y_m1[idx], axis=1)
         R = np.sqrt(np.maximum(dist_m1 ** 2 - dist ** 2, 0)) / (dist + 1e-8)
-        A = np.linalg.norm(Y_m1[:, -d:] - Y_m1[idx, -d:], axis=1) / np.std(X)
+        A = np.linalg.norm((Y_m1[:, -d:] - Y_m1[idx, -d:]) / np.std(X, axis=0), axis=1)
         return np.sum((R > self.Rtol) | (A > self.Atol)) / N
 
     def _fnn_ratio_parralel(self, X):
@@ -161,7 +161,7 @@ class EmbeddingDimensionEstimator:
 
         if threshold is not None:
             self.threshold = threshold
-        valid_fnns = [f for f in self.all_fnns if f[-1] < self.threshold]
+        valid_fnns = [f for f in self.all_fnns if f[-1] < self.threshold] if not self.multivariate else self.all_fnns
         self.fnn_max = np.max(valid_fnns, axis=0)
         self.coverage_ratio = len(valid_fnns) / len(self.all_fnns)
 
@@ -204,11 +204,11 @@ class EmbeddingDimensionEstimator:
         plt.axhline(self.threshold, color="green", linestyle=":", lw=2, label=f"threshold = {self.threshold}")
 
         # добавляем в легенду, какая часть каналов удовлетворяет выбранному dimension
-        plt.plot([], [], ' ', label=f"channels covered: {100 * self.coverage_ratio:.1f}%")
+        plt.plot([], [], " ", label=f"channels covered: {100 * self.coverage_ratio:.1f}%")
 
-        plt.title(f"FNN — Embedding Dimension ({self.data_name})", fontsize=20)
+        plt.title(f"FNN — Embedding Dimension for {self.data_name}" + ("" if self.multivariate else " (channel-wise max)"), fontsize=20)
         plt.xlabel("Embedding dimension (m)", fontsize=16)
-        plt.ylabel("FNN ratio (max)", fontsize=16)
+        plt.ylabel("FNN ratio" + ("" if self.multivariate else " (max over channels)"), fontsize=16)
         plt.yscale("log")
         plt.grid(linestyle=":")
         plt.legend(fontsize=14)
