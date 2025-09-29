@@ -30,10 +30,14 @@ class DelayEstimator:
         """
         Возвращает индекс первого локального минимума массива или None
         """
-        # смотрим на окно длины 5
-        is_local_minimum = ((values[2:-2] <= values[:-4]) & (values[2:-2] <= values[1:-3])
-                            & (values[2:-2] <= values[3:-1]) & (values[2:-2] <= values[4:]))
-        ids = np.flatnonzero(is_local_minimum) + 3
+        # смотрим на окно длины 9
+        k = 4
+        center = values[k:len(values) - k]
+        is_local_minimum = np.ones_like(center, dtype=bool)
+
+        for shift in range(-k, k + 1):
+            is_local_minimum &= (center <= values[k + shift:len(values) - k + shift])
+        ids = np.flatnonzero(is_local_minimum) + k + 1
         return ids[0] if ids.size else None
 
     @staticmethod
@@ -41,10 +45,14 @@ class DelayEstimator:
         """
         Возвращает индекс первого локального максимума массива или None
         """
-        # смотрим на окно длины 5
-        is_local_minimum = ((values[2:-2] >= values[:-4]) & (values[2:-2] >= values[1:-3])
-                            & (values[2:-2] >= values[3:-1]) & (values[2:-2] >= values[4:]))
-        ids = np.flatnonzero(is_local_minimum) + 3
+        # смотрим на окно длины 9
+        k = 4
+        center = values[k:len(values) - k]
+        is_local_minimum = np.ones_like(center, dtype=bool)
+
+        for shift in range(-k, k + 1):
+            is_local_minimum &= (center >= values[k + shift:len(values) - k + shift])
+        ids = np.flatnonzero(is_local_minimum) + k + 1
         return ids[0] if ids.size else None
 
     def fit(self, X):
