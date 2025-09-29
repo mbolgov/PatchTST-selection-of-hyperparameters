@@ -4,6 +4,8 @@ from sklearn.metrics import mutual_info_score
 from sklearn.neighbors import NearestNeighbors
 from joblib import Parallel, delayed
 
+from delay_embedding import build_embedding
+
 
 class DelayEstimator:
     def __init__(self, max_tau=100, bins=20, data_name="Time Series", n_jobs=-1):
@@ -113,17 +115,6 @@ class EmbeddingDimensionEstimator:
         self.coverage_ratio = None
         self.m_opt = None
 
-    @staticmethod
-    def _build_embedding(X, tau, m_max):
-        """
-        Строит delay embedding для всех размерностей до m_max
-        """
-        T, d = X.shape
-        Y_full = np.zeros((T, m_max * d))
-        for i in range(m_max):
-            Y_full[:T - i * tau, i * d:(i + 1) * d] = X[i * tau:T]
-        return Y_full
-
     def _fnn_for_m(self, Y_full, X, m):
         """
         Вычисляет долю FNN для фиксированного m
@@ -146,7 +137,7 @@ class EmbeddingDimensionEstimator:
         """
         Вычисляет долю FNN для размерностей от 1 до m_max параллельно
         """
-        Y_full = self._build_embedding(X, tau=self.tau, m_max=self.m_max)
+        Y_full = build_embedding(X, tau=self.tau, m_max=self.m_max)
         fnn_percents = Parallel(n_jobs=self.n_jobs)(
             delayed(self._fnn_for_m)(Y_full, X, m) for m in range(1, self.m_max)
         )
@@ -156,7 +147,7 @@ class EmbeddingDimensionEstimator:
         """
         Вычисляет долю FNN для размерностей от 1 до m_max последовательно
         """
-        Y_full = self._build_embedding(X, tau=self.tau, m_max=self.m_max)
+        Y_full = build_embedding(X, tau=self.tau, m_max=self.m_max)
         fnn_percents = [self._fnn_for_m(Y_full, X, m) for m in range(1, self.m_max)]
         return np.array(fnn_percents)
 
