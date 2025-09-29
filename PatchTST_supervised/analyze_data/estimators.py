@@ -164,7 +164,8 @@ class EmbeddingDimensionEstimator:
         self.fnn_max = np.max(valid_fnns, axis=0)
         self.coverage_ratio = len(valid_fnns) / len(self.all_fnns)
 
-        below = np.where(self.fnn_max < self.threshold)[0]
+        rolling_max = np.array([max(self.fnn_max[i:i + 5]) for i in range(self.m_max - 1)])
+        below = np.where(rolling_max < self.threshold)[0]
         self.m_opt = int(below[0]) + 1 if len(below) > 0 else None
         return self
 
