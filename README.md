@@ -111,4 +111,7 @@ $$patch(t), patch(t - \text{stride}), patch(t - 2 \cdot \text{stride}), ..., pat
 | ETTh1    | 14      | 29      | 12       | 40       |
 | ETTh2    | 14      | 30      | 12       | 30       |
 | ETTm1    | 57      | 32      | 48       | 30       |
-| ETTm2    | 55      | 57      | 48       | 40       |
+| ETTm2    | 55      | 57      | 48       | 30       |
+
+### Таблица с предсказаниями
+![forecasting_results](pic/forecasting_results.png)
